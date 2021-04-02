@@ -22,6 +22,10 @@ PAUSADO = "PAUSADO"
 JOGANDO = "JOGANDO"
 GAMEOVER = "GAMEOVER"
 VITORIA = "VITORIA"
+FANTASMA_X_START_POSITION = 14.0
+FANTASMA_Y_START_POSITION = 14.0
+PACMAN_X_START_POSITION = 1
+PACMAN_Y_START_POSITION = 1
 
 
 class ElementoJogo(metaclass=ABCMeta):
@@ -66,6 +70,7 @@ class Cenario(ElementoJogo, ValidadorMovivel):
         # JOGANDO, PAUSADO, GAMEOVER, VITORIA
         self.estado = JOGANDO
         self.pontos = 0
+        self.vidas = 5
         self.matriz = [
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
             [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
@@ -153,8 +158,10 @@ class Cenario(ElementoJogo, ValidadorMovivel):
 
     def pintar_pontos(self, tela):
         pontos_x = 30 * self.tamanho
-        img_pontos = font.render("Score: {}".format(self.pontos), True, AMARELO)
-        tela.blit(img_pontos, (pontos_x, 50))
+        pontos_img = font.render("Score: {}".format(self.pontos), True, AMARELO)
+        vidas_img = font.render("Vidas: {}".format(self.vidas), True, AMARELO)
+        tela.blit(pontos_img, (pontos_x, 50))
+        tela.blit(vidas_img, (pontos_x, 100))
 
     def calcular_regras(self):
         if self.estado == JOGANDO:
@@ -162,6 +169,12 @@ class Cenario(ElementoJogo, ValidadorMovivel):
 
         elif self.estado == PAUSADO:
             self.calcular_regras_pausado()
+
+        elif self.estado == GAMEOVER:
+            self.calcular_regras_gameover()
+
+        elif self.estado == VITORIA:
+            self.calcular_regras_vitoria()
 
     def calcular_regras_vitoria(self):
         pass
@@ -186,7 +199,14 @@ class Cenario(ElementoJogo, ValidadorMovivel):
 
             if isinstance(movivel, Fantasma) and movivel.linha == self.pacman.linha \
                     and movivel.coluna == self.pacman.coluna:
-                self.estado = GAMEOVER
+                self.vidas -= 1
+                pacman.coluna = PACMAN_X_START_POSITION
+                pacman.linha = PACMAN_Y_START_POSITION
+                movivel.coluna = FANTASMA_X_START_POSITION
+                movivel.linha = FANTASMA_Y_START_POSITION
+
+                if self.vidas == 0:
+                    self.estado = GAMEOVER
 
             else:
                 if 0 <= col_intencao <= 28 and 0 <= lin_intencao <= 29 and self.matriz[lin_intencao][col_intencao] != 2:
@@ -236,8 +256,8 @@ class Cenario(ElementoJogo, ValidadorMovivel):
 
 class Pacman(ElementoJogo, Movivel):
     def __init__(self, tamanho):
-        self.coluna = 1
-        self.linha = 1
+        self.coluna = PACMAN_X_START_POSITION
+        self.linha = PACMAN_Y_START_POSITION
         self.centro_x = 400
         self.centro_y = 300
         self.tamanho = tamanho
@@ -295,7 +315,6 @@ class Pacman(ElementoJogo, Movivel):
             labio_superior = (self.centro_x + self.abertura, self.centro_y + self.raio * -1)
             labio_inferior = (self.centro_x - self.abertura, self.centro_y + self.raio * -1)
 
-
         pontos = [canto_boca, labio_superior, labio_inferior]
         pygame.draw.polygon(tela, PRETO, pontos, 0)
 
@@ -333,7 +352,6 @@ class Pacman(ElementoJogo, Movivel):
                     self.vel_x = 0
                     self.direcao = ABAIXO
 
-
     def aceitar_movimento(self):
         self.linha = self.linha_intencao
         self.coluna = self.coluna_intencao
@@ -341,8 +359,8 @@ class Pacman(ElementoJogo, Movivel):
 
 class Fantasma(ElementoJogo, Movivel):
     def __init__(self, cor, tamanho):
-        self.coluna = 14.0
-        self.linha = 14.0
+        self.coluna = FANTASMA_X_START_POSITION
+        self.linha = FANTASMA_Y_START_POSITION
         self.coluna_intencao = self.coluna
         self.linha_intencao = self.linha
         self.velocidade = VELOCIDADE
