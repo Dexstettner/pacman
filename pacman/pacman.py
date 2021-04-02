@@ -1,16 +1,32 @@
 import pygame
-
+from abc import ABCMeta, abstractmethod
 pygame.init()
 
 screen = pygame.display.set_mode((800, 600), 0)
 font = pygame.font.SysFont("arial", 24, True, False)
 AMARELO = (255, 255, 0)
 PRETO = (0, 0, 0)
+BRANCO = (255, 255, 255)
 AZUL = (0, 0, 255)
+VERMELHO = (255, 0, 0)
 VELOCIDADE = 1
 
 
-class Cenario:
+class ElementoJogo(metaclass=ABCMeta):
+    @abstractmethod
+    def pintar(self, tela):
+        pass
+
+    @abstractmethod
+    def calcular_regras(self):
+        pass
+
+    @abstractmethod
+    def processar_eventos(self, eventos):
+        pass
+
+
+class Cenario(ElementoJogo):
     def __init__(self, tamanho, pac):
         self.pacman = pac
         self.tamanho = tamanho
@@ -63,9 +79,9 @@ class Cenario:
     def pintar(self, tela):
         for numero_linha, linha in enumerate(self.matriz):
             self.pintar_linha(tela, numero_linha, linha)
-            self.pintar_porntos(tela)
+            self.pintar_pontos(tela)
 
-    def pintar_porntos(self, tela):
+    def pintar_pontos(self, tela):
         pontos_x = 30 * self.tamanho
         img_pontos = font.render("Score: {}".format(self.pontos), True, AMARELO)
         tela.blit(img_pontos, (pontos_x, 50))
@@ -80,10 +96,13 @@ class Cenario:
                     self.pontos += 1
                     self.matriz[lin][col] = 0
 
+    def processar_eventos(self, eventos):
+        for e in eventos:
+            if e.type == pygame.QUIT:
+                exit()
 
 
-
-class Pacman:
+class Pacman(ElementoJogo):
     def __init__(self, tamanho):
         self.coluna = 1
         self.linha = 1
@@ -122,22 +141,22 @@ class Pacman:
     def processar_eventos(self, eventos):
         for e in eventos:
             if e.type == pygame.KEYDOWN:
-                if e.key == pygame.K_RIGHT:
+                if e.key == pygame.K_RIGHT or e.key == pygame.K_d:
                     self.vel_x = VELOCIDADE
-                elif e.key == pygame.K_LEFT:
+                elif e.key == pygame.K_LEFT or e.key == pygame.K_a:
                     self.vel_x = -VELOCIDADE
-                elif e.key == pygame.K_UP:
+                elif e.key == pygame.K_UP or e.key == pygame.K_w:
                     self.vel_y = -VELOCIDADE
-                elif e.key == pygame.K_DOWN:
+                elif e.key == pygame.K_DOWN or e.key == pygame.K_s:
                     self.vel_y = VELOCIDADE
             elif e.type == pygame.KEYUP:
-                if e.key == pygame.K_RIGHT:
+                if e.key == pygame.K_RIGHT or e.key == pygame.K_d:
                     self.vel_x = 0
-                elif e.key == pygame.K_LEFT:
+                elif e.key == pygame.K_LEFT or e.key == pygame.K_a:
                     self.vel_x = 0
-                elif e.key == pygame.K_UP:
+                elif e.key == pygame.K_UP or e.key == pygame.K_w:
                     self.vel_y = 0
-                elif e.key == pygame.K_DOWN:
+                elif e.key == pygame.K_DOWN or e.key == pygame.K_s:
                     self.vel_y = 0
 
     def aceitar_movimento(self):
@@ -145,11 +164,55 @@ class Pacman:
         self.coluna = self.coluna_intencao
 
 
+class Fantasma(ElementoJogo):
+    def __init__(self, cor, tamanho):
+        self.coluna = 7.0
+        self.linha = 8.0
+        self.cor = cor
+        self.tamanho = tamanho
+
+    def pintar(self, tela):
+        fatia = self.tamanho // 8
+        px = int(self.coluna * self.tamanho)
+        py = int(self.linha * self.tamanho)
+        contorno = [(px, py + self.tamanho),
+                    (px + fatia, py + fatia * 2),
+                    (px + fatia * 2, py + fatia // 2),
+                    (px + fatia * 3, py),
+                    (px + fatia * 5, py),
+                    (px + fatia * 6, py + fatia // 2),
+                    (px + fatia * 7, py + 2),
+                    (px + self.tamanho, py + self.tamanho)]
+        pygame.draw.polygon(tela, self.cor, contorno, 0)
+
+        olho_raio_ext = fatia
+        olho_raio_int = fatia // 2
+
+        olho_e_x = int(px + fatia * 2.5)
+        olho_e_y = int(py + fatia * 2.5)
+
+        olho_d_x = int(px + fatia * 5.5)
+        olho_d_y = int(py + fatia * 2.5)
+
+        pygame.draw.circle(tela, BRANCO, (olho_e_x, olho_e_y), olho_raio_ext, 0)
+        pygame.draw.circle(tela, PRETO, (olho_e_x, olho_e_y), olho_raio_int, 0)
+
+        pygame.draw.circle(tela, BRANCO, (olho_d_x, olho_d_y), olho_raio_ext, 0)
+        pygame.draw.circle(tela, PRETO, (olho_d_x, olho_d_y), olho_raio_int, 0)
+
+
+    def calcular_regras(self):
+        pass
+
+    def processar_eventos(self, eventos):
+        pass
+
+
 if __name__ == "__main__":
     size = 600 // 30
     pacman = Pacman(size)
     cenario = Cenario(size, pacman)
-
+    blinky = Fantasma(VERMELHO, size)
     while True:
         # Calcular as regras
         pacman.calcular_regras()
@@ -159,12 +222,11 @@ if __name__ == "__main__":
         screen.fill(PRETO)
         cenario.pintar(screen)
         pacman.pintar(screen)
+        blinky.pintar(screen)
         pygame.display.update()
         pygame.time.delay(100)
 
         # Captura os eventos
         eventos = pygame.event.get()
-        for e in eventos:
-            if e.type == pygame.QUIT:
-                exit()
+        cenario.processar_eventos(eventos)
         pacman.processar_eventos(eventos)
